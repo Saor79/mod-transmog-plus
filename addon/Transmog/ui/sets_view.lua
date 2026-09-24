@@ -5,6 +5,28 @@ local MAX_VISIBLE_SETS = 7
 local MAX_PIECES_PER_SET = 10
 local SET_BUTTON_HEIGHT = 48
 
+local CLASS_ARMOR_SUBCLASS = {
+    ["WARRIOR"] = 4,
+    ["PALADIN"] = 4,
+    ["DEATHKNIGHT"] = 4,
+    ["HUNTER"] = 3,
+    ["SHAMAN"] = 3,
+    ["ROGUE"] = 2,
+    ["DRUID"] = 2,
+    ["MAGE"] = 1,
+    ["PRIEST"] = 1,
+    ["WARLOCK"] = 1,
+}
+
+local SUBCLASS_STR_TO_NUM = {
+    ["Cloth"] = 1, ["Tela"] = 1,
+    ["Leather"] = 2, ["Cuero"] = 2,
+    ["Mail"] = 3, ["Malla"] = 3,
+    ["Plate"] = 4, ["Placas"] = 4,
+    ["Miscellaneous"] = 0, ["Misceláneo"] = 0,
+    ["Shields"] = 6, ["Escudos"] = 6,
+}
+
 local SLOT_LABELS = {
     [1] = "Head",
     [3] = "Shoulder",
@@ -47,20 +69,118 @@ function Transmog:GetSetCollectedCount(set)
     return collected, total
 end
 
+-- Checks if a set piece can be transmogrified onto the currently equipped item in that slot.
+-- Returns: compatible (boolean), targetItemID (number: 0 to reset/restore original, or piece.id to transmog)
+function Transmog:IsSetPieceCompatibleWithEquipped(piece, set)
+    if not piece or not piece.slot or not piece.id then
+        return false, nil
+    end
+
+    local eqLink = GetInventoryItemLink('player', piece.slot)
+    if not eqLink then
+        return false, nil
+    end
+
+    local eqID = self:IDFromLink(eqLink)
+    -- If player is already wearing this exact item in this slot:
+    -- Return target 0 so any active foreign transmog is removed, restoring the original set piece appearance.
+    if eqID == piece.id then
+        return true, 0
+    end
+
+    -- Universal slot matches: Cloaks (slot 15), Shirts (slot 4), Tabards (slot 19)
+    if piece.slot == 15 or piece.slot == 4 or piece.slot == 19 then
+        return true, piece.id
+    end
+
+    -- Armor slots: Match subclass
+    local _, _, _, _, _, _, eqSubclass = GetItemInfo(eqLink)
+    local eqSubNum = eqSubclass and SUBCLASS_STR_TO_NUM[eqSubclass]
+    if not eqSubNum and eqSubclass and self.ItemSubclassStrToNum then
+        local ok, val = pcall(self.ItemSubclassStrToNum, self, eqSubclass)
+        if ok and val and val >= 0 then
+            eqSubNum = val
+        end
+    end
+
+    local _, _, _, _, _, _, pieceSubclass = GetItemInfo(piece.id)
+    local pieceSubNum = pieceSubclass and SUBCLASS_STR_TO_NUM[pieceSubclass]
+    if not pieceSubNum and pieceSubclass and self.ItemSubclassStrToNum then
+        local ok, val = pcall(self.ItemSubclassStrToNum, self, pieceSubclass)
+        if ok and val and val >= 0 then
+            pieceSubNum = val
+        end
+    end
+
+    if eqSubNum and pieceSubNum then
+        if eqSubNum == pieceSubNum then
+            return true, piece.id
+        else
+            return false, nil
+        end
+    end
+
+    -- Fallback: If piece subclass is not yet in client cache, match using set.class
+    if eqSubNum and set and set.class and set.class ~= "ALL" then
+        for cls, subNum in pairs(CLASS_ARMOR_SUBCLASS) do
+            if subNum == eqSubNum and string.find(set.class, cls) then
+                return true, piece.id
+            end
+        end
+        local isClassArmorSet = false
+        for cls, _ in pairs(CLASS_ARMOR_SUBCLASS) do
+            if string.find(set.class, cls) then
+                isClassArmorSet = true
+                break
+            end
+        end
+        if isClassArmorSet then
+            return false, nil
+        end
+    end
+
+    -- Fallback: Check server appearance bucket if populated
+    if self.IsOutfitAppearanceCompatible and self:IsOutfitAppearanceCompatible(piece.slot, piece.id) then
+        return true, piece.id
+    end
+
+    if eqSubNum then
+        return true, piece.id
+    end
+
+    return false, nil
+end
+
 -- Previews an entire set on the 3D player model.
 function Transmog:PreviewSetOnModel(set)
     if not set or not set.pieces then return end
     TransmogFramePlayerModel:Undress()
 
-    -- Try on equipped items for slots not in this set
+    -- Try on equipped or active server appearances for slots not in this set
     local setSlots = {}
     for _, p in ipairs(set.pieces) do
         setSlots[p.slot] = p.id
     end
     for _, slot in pairs(self.inventorySlots) do
         if not setSlots[slot] then
-            local eff = self.transmogStatusToServer[slot] or self.equippedItems[slot]
-            if eff and eff ~= 0 and eff ~= Transmog.HIDDEN_ITEM_ID then
+            local eff = nil
+            if self.transmogStatusFromServer and self.transmogStatusFromServer[slot] and self.transmogStatusFromServer[slot] ~= 0 then
+                if self.transmogStatusFromServer[slot] ~= Transmog.HIDDEN_ITEM_ID then
+                    eff = self.transmogStatusFromServer[slot]
+                end
+            else
+                local eqID = self.equippedItems and self.equippedItems[slot]
+                if (not eqID or eqID == 0) and GetInventoryItemLink then
+                    local link = GetInventoryItemLink('player', slot)
+                    if link and self.IDFromLink then
+                        eqID = self:IDFromLink(link)
+                    end
+                end
+                if eqID and eqID ~= 0 and eqID ~= Transmog.HIDDEN_ITEM_ID then
+                    eff = eqID
+                end
+            end
+            if eff then
                 TransmogFramePlayerModel:TryOn(eff)
             end
         end
@@ -75,13 +195,46 @@ function Transmog:PreviewSetOnModel(set)
     end
 end
 
+-- Updates paperdoll slot icons to reflect pending changes from set staging.
+function Transmog:RefreshStagedSlotIcons()
+    for slotName, slotId in pairs(self.inventorySlots) do
+        local toServer = self.transmogStatusToServer and self.transmogStatusToServer[slotId]
+        local fromServer = self.transmogStatusFromServer and self.transmogStatusFromServer[slotId]
+        if toServer ~= nil and fromServer ~= nil and toServer ~= fromServer then
+            local iconTex = nil
+            if toServer == 0 then
+                local eqLink = GetInventoryItemLink('player', slotId)
+                if eqLink then
+                    local _, _, _, _, _, _, _, _, _, tex = GetItemInfo(eqLink)
+                    iconTex = tex
+                end
+            elseif toServer == Transmog.HIDDEN_ITEM_ID then
+                local emptyTexture = string.lower(TransmogFrame_Explode(slotName, 'Slot')[1])
+                if emptyTexture == 'wrist' then emptyTexture = 'wrists' end
+                if emptyTexture == 'back' then emptyTexture = 'chest' end
+                iconTex = 'Interface\\Paperdoll\\ui-paperdoll-slot-' .. emptyTexture
+            else
+                self:cacheItem(toServer)
+                local _, _, _, _, _, _, _, _, _, tex = GetItemInfo(toServer)
+                iconTex = tex
+            end
+            if iconTex then
+                local iconObj = getglobal(slotName .. "ItemIcon")
+                if iconObj then
+                    iconObj:SetTexture(iconTex)
+                end
+            end
+        end
+    end
+end
+
 -- Stages collected, compatible pieces from the set into transmogStatusToServer.
 function Transmog:ApplySetToSlots(set)
     if not set or not set.pieces then return end
     self.transmogStatusFromServer = self.transmogStatusFromServer or {}
     self.transmogStatusToServer = self.transmogStatusToServer or {}
 
-    for _, slot in ipairs(self.inventorySlots) do
+    for _, slot in pairs(self.inventorySlots) do
         self.transmogStatusToServer[slot] = self.transmogStatusFromServer[slot] or 0
     end
 
@@ -90,16 +243,20 @@ function Transmog:ApplySetToSlots(set)
 
     for _, p in ipairs(set.pieces) do
         if self:IsItemCollected(p.id) then
-            if GetInventoryItemLink('player', p.slot) and self:IsOutfitAppearanceCompatible(p.slot, p.id) then
-                self.transmogStatusToServer[p.slot] = p.id
+            local compatible, targetID = self:IsSetPieceCompatibleWithEquipped(p, set)
+            if compatible then
+                self.transmogStatusToServer[p.slot] = targetID
                 appliedCount = appliedCount + 1
             else
                 skippedCount = skippedCount + 1
             end
+        else
+            skippedCount = skippedCount + 1
         end
     end
 
     self:transmogStatus()
+    self:RefreshStagedSlotIcons()
     self:RefreshPendingGlows()
     self:RefreshPreviewModel()
     self:calculateCost()
@@ -705,27 +862,29 @@ function Transmog:SelectSet(set)
         self.detailFrame:Show()
     end
 
-    -- Automatically preview on 3D character model
-    self:PreviewSetOnModel(set)
-
     -- Automatically stage collected, compatible pieces for equipped gear
     -- Revert pending changes on all slots to server status first
     self.transmogStatusFromServer = self.transmogStatusFromServer or {}
     self.transmogStatusToServer = self.transmogStatusToServer or {}
 
-    for _, slot in ipairs(self.inventorySlots) do
+    for _, slot in pairs(self.inventorySlots) do
         self.transmogStatusToServer[slot] = self.transmogStatusFromServer[slot] or 0
     end
 
     for _, piece in ipairs(set.pieces) do
         if self:IsItemCollected(piece.id) then
-            if GetInventoryItemLink('player', piece.slot) and self:IsOutfitAppearanceCompatible(piece.slot, piece.id) then
-                self.transmogStatusToServer[piece.slot] = piece.id
+            local compatible, targetID = self:IsSetPieceCompatibleWithEquipped(piece, set)
+            if compatible then
+                self.transmogStatusToServer[piece.slot] = targetID
             end
         end
     end
 
+    -- Automatically preview on 3D character model
+    self:PreviewSetOnModel(set)
+
     self:transmogStatus()
+    self:RefreshStagedSlotIcons()
     self:RefreshPendingGlows()
     self:calculateCost()
     self:EnableOutfitSaveButton()
