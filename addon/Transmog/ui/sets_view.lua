@@ -151,18 +151,39 @@ function Transmog:IsSetPieceCompatibleWithEquipped(piece, set)
     return false, nil
 end
 
--- Previews an entire set on the 3D player model.
+-- Previews a set on the 3D player model.
+-- If the player has collected pieces, only collected & compatible pieces are previewed,
+-- while uncollected or unrepresented slots display the player's active gear.
+-- If the player has 0 pieces collected, the entire set is previewed as a showcase.
 function Transmog:PreviewSetOnModel(set)
     if not set or not set.pieces then return end
     TransmogFramePlayerModel:Undress()
 
-    -- Try on equipped or active server appearances for slots not in this set
-    local setSlots = {}
+    local collectedCount = self:GetSetCollectedCount(set)
+
+    -- Determine which set pieces should be previewed
+    local previewSetSlots = {}
     for _, p in ipairs(set.pieces) do
-        setSlots[p.slot] = p.id
+        local shouldTryOn = false
+        if collectedCount == 0 then
+            shouldTryOn = true
+        else
+            if self:IsItemCollected(p.id) then
+                local compatible = self:IsSetPieceCompatibleWithEquipped(p, set)
+                if compatible then
+                    shouldTryOn = true
+                end
+            end
+        end
+
+        if shouldTryOn and p.id and p.id ~= 0 then
+            previewSetSlots[p.slot] = p.id
+        end
     end
+
+    -- For slots not previewing a set piece, display active server appearance or equipped item
     for _, slot in pairs(self.inventorySlots) do
-        if not setSlots[slot] then
+        if not previewSetSlots[slot] then
             local eff = nil
             if self.transmogStatusFromServer and self.transmogStatusFromServer[slot] and self.transmogStatusFromServer[slot] ~= 0 then
                 if self.transmogStatusFromServer[slot] ~= Transmog.HIDDEN_ITEM_ID then
@@ -186,9 +207,9 @@ function Transmog:PreviewSetOnModel(set)
         end
     end
 
-    -- Try on all set pieces
+    -- Try on the previewed set pieces
     for _, p in ipairs(set.pieces) do
-        if p.id and p.id ~= 0 then
+        if previewSetSlots[p.slot] == p.id then
             self:cacheItem(p.id)
             TransmogFramePlayerModel:TryOn(p.id)
         end
