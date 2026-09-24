@@ -144,7 +144,7 @@ end
 -- Handles the server response after applying transmog changes.
 function Transmog:ApplyTransmogResult(success, data)
 
-	twfdebug("ApplyTransmogResult success: "..success)
+	twfdebug("ApplyTransmogResult success: "..tostring(success))
 
 	if success == 1 then
 		for i, pair in ipairs(data) do
@@ -159,12 +159,29 @@ function Transmog:ApplyTransmogResult(success, data)
 			Transmog.transmogStatusFromServer[slot] = itemID
 			Transmog.transmogStatusToServer[slot] = itemID
         end
-
-        Transmog:RefreshPendingGlows()
-        Transmog.pendingApplyCount = Transmog.pendingApplyCount - 1
-        if Transmog.pendingApplyCount <= 0 then
-			PlaySoundFile("Interface\\AddOns\\Transmog\\assets\\ui_transmogrify_apply.ogg", "Dialog");
-			Transmog:transmogStatus()
+	else
+		DEFAULT_CHAT_FRAME:AddMessage("|cffff4444[Transmog]|r Failed to apply transmogrification (appearance incompatible or empty slot).")
+		-- Revert pending changes that did not succeed
+		for slot, itemID in pairs(Transmog.transmogStatusToServer) do
+			if Transmog.transmogStatusFromServer[slot] ~= itemID then
+				Transmog.transmogStatusToServer[slot] = Transmog.transmogStatusFromServer[slot] or 0
+			end
 		end
+	end
+
+	Transmog:RefreshPendingGlows()
+
+	if Transmog.pendingApplyCount and Transmog.pendingApplyCount > 0 then
+		Transmog.pendingApplyCount = Transmog.pendingApplyCount - 1
+	else
+		Transmog.pendingApplyCount = 0
+	end
+
+	if Transmog.pendingApplyCount <= 0 then
+		if success == 1 then
+			PlaySoundFile("Interface\\AddOns\\Transmog\\assets\\ui_transmogrify_apply.ogg", "Dialog")
+		end
+		Transmog:transmogStatus()
+		Transmog:calculateCost()
 	end
 end

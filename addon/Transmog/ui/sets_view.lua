@@ -75,19 +75,27 @@ function Transmog:PreviewSetOnModel(set)
     end
 end
 
--- Stages all collected pieces from the set into transmogStatusToServer.
+-- Stages collected, compatible pieces from the set into transmogStatusToServer.
 function Transmog:ApplySetToSlots(set)
     if not set or not set.pieces then return end
+    self.transmogStatusFromServer = self.transmogStatusFromServer or {}
+    self.transmogStatusToServer = self.transmogStatusToServer or {}
+
+    for _, slot in ipairs(self.inventorySlots) do
+        self.transmogStatusToServer[slot] = self.transmogStatusFromServer[slot] or 0
+    end
 
     local appliedCount = 0
-    local missingCount = 0
+    local skippedCount = 0
 
     for _, p in ipairs(set.pieces) do
         if self:IsItemCollected(p.id) then
-            self.transmogStatusToServer[p.slot] = p.id
-            appliedCount = appliedCount + 1
-        else
-            missingCount = missingCount + 1
+            if GetInventoryItemLink('player', p.slot) and self:IsOutfitAppearanceCompatible(p.slot, p.id) then
+                self.transmogStatusToServer[p.slot] = p.id
+                appliedCount = appliedCount + 1
+            else
+                skippedCount = skippedCount + 1
+            end
         end
     end
 
@@ -99,13 +107,13 @@ function Transmog:ApplySetToSlots(set)
 
     if appliedCount > 0 then
         PlaySound("igSpellBookOpen")
-        if missingCount > 0 then
-            DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[Transmog]|r Staged " .. appliedCount .. " collected pieces of |cffa335ee[" .. set.name .. "]|r (" .. missingCount .. " uncollected pieces skipped). Click Apply to transmog!")
+        if skippedCount > 0 then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[Transmog]|r Staged " .. appliedCount .. " pieces of |cffa335ee[" .. set.name .. "]|r (" .. skippedCount .. " uncollected or incompatible pieces skipped). Click Apply to transmog!")
         else
-            DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[Transmog]|r Staged all " .. appliedCount .. " pieces of |cffa335ee[" .. set.name .. "]|r for transmog! Click Apply to commit.")
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[Transmog]|r Staged all " .. appliedCount .. " pieces of |cffa335ee[" .. set.name .. "]|r! Click Apply to commit.")
         end
     else
-        DEFAULT_CHAT_FRAME:AddMessage("|cffff4444[Transmog]|r You have not collected any appearances from [" .. set.name .. "] yet.")
+        DEFAULT_CHAT_FRAME:AddMessage("|cffff4444[Transmog]|r No applicable collected appearances found for your equipped gear from [" .. set.name .. "].")
     end
 end
 
@@ -218,15 +226,9 @@ function Transmog:InitSetsView()
     UIDropDownMenu_Initialize(catDD, SetCategoryDropDown_Initialize)
     UIDropDownMenu_SetText(catDD, "All Categories")
 
-    -- Set count summary label
-    local countText = frame:CreateFontString("TransmogSetCountText", "OVERLAY", "GameFontHighlightSmall")
-    countText:SetPoint("RIGHT", frame, "TOPRIGHT", -12, -8)
-    countText:SetText("")
-
     self.setsFrame = frame
     self.classDropDown = classDD
     self.categoryDropDown = catDD
-    self.countText = countText
 
     -- Left Column: Set List container
     local listContainer = CreateFrame("Frame", "TransmogSetListContainer", frame)
@@ -406,47 +408,38 @@ function Transmog:InitSetsView()
     for i = 1, MAX_PIECES_PER_SET do
         local pBtn = CreateFrame("Button", "TransmogSetPieceButton" .. i, detail)
         pBtn:SetWidth(234)
-        pBtn:SetHeight(24)
-        pBtn:SetPoint("TOPLEFT", detail, "TOPLEFT", 8, -66 - (i - 1) * 25)
+        pBtn:SetHeight(30)
+        pBtn:SetPoint("TOPLEFT", detail, "TOPLEFT", 8, -66 - (i - 1) * 33)
         pBtn:SetFrameLevel(detail:GetFrameLevel() + 2)
 
-        -- Icon
+        -- Icon (26x26 to match character equipment slot icons)
         local icon = pBtn:CreateTexture(nil, "ARTWORK")
-        icon:SetPoint("LEFT", pBtn, "LEFT", 2, 0)
-        icon:SetWidth(20)
-        icon:SetHeight(20)
+        icon:SetPoint("LEFT", pBtn, "LEFT", 3, 0)
+        icon:SetWidth(26)
+        icon:SetHeight(26)
         pBtn.icon = icon
 
         -- Icon Border
         local iborder = pBtn:CreateTexture(nil, "OVERLAY")
         iborder:SetPoint("CENTER", icon, "CENTER", 0, 0)
-        iborder:SetWidth(24)
-        iborder:SetHeight(24)
+        iborder:SetWidth(30)
+        iborder:SetHeight(30)
         iborder:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
         iborder:SetBlendMode("ADD")
         pBtn.iborder = iborder
 
-        -- Slot label
-        local slotText = pBtn:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        slotText:SetPoint("LEFT", pBtn, "LEFT", 26, 0)
-        slotText:SetWidth(48)
-        slotText:SetHeight(14)
-        slotText:SetJustifyH("LEFT")
-        pBtn.slotText = slotText
+        -- Status Icon (Green Tick or Red Cross)
+        local statusIcon = pBtn:CreateTexture(nil, "ARTWORK")
+        statusIcon:SetPoint("RIGHT", pBtn, "RIGHT", -6, 0)
+        statusIcon:SetWidth(16)
+        statusIcon:SetHeight(16)
+        pBtn.statusIcon = statusIcon
 
-        -- Status badge (Collected / Missing)
-        local statusText = pBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        statusText:SetPoint("RIGHT", pBtn, "RIGHT", -4, 0)
-        statusText:SetWidth(56)
-        statusText:SetHeight(16)
-        statusText:SetJustifyH("RIGHT")
-        pBtn.statusText = statusText
-
-        -- Item Name
-        local nameText = pBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        nameText:SetPoint("LEFT", pBtn, "LEFT", 76, 0)
-        nameText:SetWidth(98)
-        nameText:SetHeight(14)
+        -- Item Name (GameFontNormal for proportional size, occupying full row width)
+        local nameText = pBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        nameText:SetPoint("LEFT", icon, "RIGHT", 8, 0)
+        nameText:SetPoint("RIGHT", statusIcon, "LEFT", -6, 0)
+        nameText:SetHeight(16)
         nameText:SetJustifyH("LEFT")
         pBtn.nameText = nameText
 
@@ -460,6 +453,11 @@ function Transmog:InitSetsView()
             if self.itemID then
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                 GameTooltip:SetHyperlink("item:" .. self.itemID .. ":0:0:0")
+                if self.isCollected then
+                    GameTooltip:AddLine("|cff00ff00Collected|r")
+                else
+                    GameTooltip:AddLine("|cffff4444Not Collected|r")
+                end
                 GameTooltip:Show()
             end
         end)
@@ -483,46 +481,6 @@ function Transmog:InitSetsView()
         self.pieceButtons[i] = pBtn
     end
 
-    -- Bottom action buttons
-    local previewBtn = CreateFrame("Button", "TransmogSetPreviewButton", detail, "UIPanelButtonTemplate")
-    previewBtn:SetWidth(72)
-    previewBtn:SetHeight(22)
-    previewBtn:SetPoint("BOTTOMLEFT", detail, "BOTTOMLEFT", 6, 8)
-    previewBtn:SetText("Preview")
-    previewBtn:SetFrameLevel(detail:GetFrameLevel() + 2)
-    previewBtn:SetScript("OnClick", function()
-        if Transmog.selectedSet then
-            Transmog:PreviewSetOnModel(Transmog.selectedSet)
-        end
-    end)
-    self.detailPreviewBtn = previewBtn
-
-    local applyBtn = CreateFrame("Button", "TransmogSetApplyButton", detail, "UIPanelButtonTemplate")
-    applyBtn:SetWidth(88)
-    applyBtn:SetHeight(22)
-    applyBtn:SetPoint("LEFT", previewBtn, "RIGHT", 4, 0)
-    applyBtn:SetText("Transmog Set")
-    applyBtn:SetFrameLevel(detail:GetFrameLevel() + 2)
-    applyBtn:SetScript("OnClick", function()
-        if Transmog.selectedSet then
-            Transmog:ApplySetToSlots(Transmog.selectedSet)
-        end
-    end)
-    self.detailApplyBtn = applyBtn
-    detail.applyBtn = applyBtn
-
-    local outfitBtn = CreateFrame("Button", "TransmogSetOutfitButton", detail, "UIPanelButtonTemplate")
-    outfitBtn:SetWidth(74)
-    outfitBtn:SetHeight(22)
-    outfitBtn:SetPoint("LEFT", applyBtn, "RIGHT", 4, 0)
-    outfitBtn:SetText("Save Outfit")
-    outfitBtn:SetFrameLevel(detail:GetFrameLevel() + 2)
-    outfitBtn:SetScript("OnClick", function()
-        if Transmog.selectedSet then
-            Transmog:SaveSetAsOutfit(Transmog.selectedSet)
-        end
-    end)
-    self.detailOutfitBtn = outfitBtn
     self.setsViewInitialized = true
 end
 
@@ -556,10 +514,6 @@ function Transmog:UpdateSetList(resetScroll)
         if classMatch and catMatch then
             table.insert(self.filteredSets, set)
         end
-    end
-
-    if self.countText then
-        self.countText:SetText(#self.filteredSets .. " Sets")
     end
 
     if resetScroll and self.scrollFrame then
@@ -651,12 +605,9 @@ function Transmog:ClearSetDetail()
             end
         end
     end
-    if self.detailApplyBtn then
-        self.detailApplyBtn:Disable()
-    end
 end
 
--- Selects a set and populates its piece cards and 3D preview.
+-- Selects a set, populates its piece list, previews on 3D model, and stages collected pieces.
 function Transmog:SelectSet(set)
     if not set then return end
     self.selectedSet = set
@@ -704,16 +655,13 @@ function Transmog:SelectSet(set)
         end
     end
 
-    -- Populate pieces
+    -- Populate piece rows
     for i = 1, MAX_PIECES_PER_SET do
         local pBtn = self.pieceButtons and self.pieceButtons[i]
         if pBtn then
             if set.pieces and i <= #set.pieces then
                 local piece = set.pieces[i]
                 pBtn.itemID = piece.id
-
-                local slotName = SLOT_LABELS[piece.slot] or ("Slot " .. piece.slot)
-                pBtn.slotText:SetText("[" .. slotName .. "]")
 
                 self:cacheItem(piece.id)
                 local itemName, _, quality, _, _, _, _, _, _, tex = GetItemInfo(piece.id)
@@ -733,26 +681,22 @@ function Transmog:SelectSet(set)
                 local r, g, b = GetItemQualityColor(quality)
                 pBtn.iborder:SetVertexColor(r or 1, g or 1, b or 1, 0.7)
 
-                if self:IsItemCollected(piece.id) then
-                    pBtn.statusText:SetText("|cff00ff00Collected|r")
+                local isCollected = self:IsItemCollected(piece.id)
+                pBtn.isCollected = isCollected
+                if isCollected then
+                    pBtn.statusIcon:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
+                    pBtn.statusIcon:Show()
                 else
-                    pBtn.statusText:SetText("|cff666666Missing|r")
+                    pBtn.statusIcon:SetTexture("Interface\\RaidFrame\\ReadyCheck-NotReady")
+                    pBtn.statusIcon:Show()
                 end
 
                 pBtn:Show()
             else
                 pBtn.itemID = nil
+                pBtn.isCollected = nil
                 pBtn:Hide()
             end
-        end
-    end
-
-    -- Enable Transmog Set if player owns at least 1 piece
-    if self.detailApplyBtn then
-        if collected > 0 then
-            self.detailApplyBtn:Enable()
-        else
-            self.detailApplyBtn:Disable()
         end
     end
 
@@ -763,6 +707,28 @@ function Transmog:SelectSet(set)
 
     -- Automatically preview on 3D character model
     self:PreviewSetOnModel(set)
+
+    -- Automatically stage collected, compatible pieces for equipped gear
+    -- Revert pending changes on all slots to server status first
+    self.transmogStatusFromServer = self.transmogStatusFromServer or {}
+    self.transmogStatusToServer = self.transmogStatusToServer or {}
+
+    for _, slot in ipairs(self.inventorySlots) do
+        self.transmogStatusToServer[slot] = self.transmogStatusFromServer[slot] or 0
+    end
+
+    for _, piece in ipairs(set.pieces) do
+        if self:IsItemCollected(piece.id) then
+            if GetInventoryItemLink('player', piece.slot) and self:IsOutfitAppearanceCompatible(piece.slot, piece.id) then
+                self.transmogStatusToServer[piece.slot] = piece.id
+            end
+        end
+    end
+
+    self:transmogStatus()
+    self:RefreshPendingGlows()
+    self:calculateCost()
+    self:EnableOutfitSaveButton()
 end
 
 -- Shows the Sets view when switching tabs.

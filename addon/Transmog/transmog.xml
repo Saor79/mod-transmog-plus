@@ -626,14 +626,9 @@
                         <AbsDimension x="100" y="14"/>
                     </Size>
                     <Anchors>
-                        <Anchor point="LEFT" relativeTo="$parent" relativePoint="BOTTOMLEFT">
+                        <Anchor point="BOTTOMLEFT" relativeTo="$parent" relativePoint="BOTTOMLEFT">
                             <Offset>
-                                <AbsDimension x="17" y="20"/>
-                            </Offset>
-                        </Anchor>
-                        <Anchor point="RIGHT" relativeTo="$parentApplyButton" relativePoint="LEFT">
-                            <Offset>
-                                <AbsDimension x="-3" y="0"/>
+                                <AbsDimension x="250" y="20"/>
                             </Offset>
                         </Anchor>
                     </Anchors>
@@ -689,9 +684,6 @@
                         </Offset>
                     </Anchor>
                 </Anchors>
-                <HitRectInsets>
-                    <AbsInset left="9" right="7" top="-7" bottom="10"/>
-                </HitRectInsets>
                 <Scripts>
                     <OnEnter>
                         GameTooltip:SetOwner(this, "ANCHOR_RIGHT", -(this:GetWidth() / 4), -(this:GetHeight() / 4));
@@ -701,11 +693,14 @@
                         GameTooltip:Hide();
                     </OnLeave>
                     <OnClick>
-                        StaticPopup_Show('CONFIRM_DELETE_OUTFIT')
+                        if Transmog.currentOutfit then
+                            StaticPopup_Show('CONFIRM_DELETE_OUTFIT')
+                        end
                     </OnClick>
                 </Scripts>
                 <NormalTexture file="Interface\Buttons\CancelButton-Up"/>
                 <PushedTexture file="Interface\Buttons\CancelButton-Down"/>
+                <DisabledTexture file="Interface\Buttons\CancelButton-Up"/>
                 <HighlightTexture file="Interface\Buttons\CancelButton-Highlight" alphaMode="ADD"/>
             </Button>
             <Button name="$parentRevert" hidden="false" text="" topLevel="true">

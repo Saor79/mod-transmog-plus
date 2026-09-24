@@ -182,12 +182,19 @@ end
 
 -- Deletes the currently selected outfit.
 function Transmog_deleteOutfit()
-    transmogOutfits[Transmog.currentOutfit] = nil
+    if not Transmog.currentOutfit then
+        return
+    end
+
+    local outfitName = Transmog.currentOutfit
+    transmogOutfits[outfitName] = nil
+    Transmog.currentOutfit = nil
     TransmogFrameSaveOutfit:Disable()
     TransmogFrameDeleteOutfit:Disable()
-    Transmog.currentOutfit = nil
     UIDropDownMenu_SetText(TransmogFrameOutfits, "Outfits")
+    UIDropDownMenu_Initialize(TransmogFrameOutfits, OutfitsDropDown_Initialize)
     Transmog_revert()
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[Transmog]|r Outfit '" .. outfitName .. "' deleted.")
 end
 
 StaticPopupDialogs["TRANSMOG_NEW_OUTFIT"] = {
@@ -209,7 +216,9 @@ StaticPopupDialogs["TRANSMOG_NEW_OUTFIT"] = {
         UIDropDownMenu_SetText(TransmogFrameOutfits, outfitName)
         Transmog.currentOutfit = outfitName
         Transmog:EnableOutfitSaveButton()
+        TransmogFrameDeleteOutfit:Enable()
         Transmog_SaveOutfit()
+        UIDropDownMenu_Initialize(TransmogFrameOutfits, OutfitsDropDown_Initialize)
         getglobal(this:GetParent():GetName() .. "EditBox"):SetText('')
     end,
     timeout = 0,
@@ -237,8 +246,8 @@ StaticPopupDialogs["TRANSMOG_OUTFIT_EMPTY_NAME"] = {
 
 StaticPopupDialogs["CONFIRM_DELETE_OUTFIT"] = {
     text = "Delete Outfit ?",
-    button1 = TEXT(YES),
-    button2 = TEXT(NO),
+    button1 = YES,
+    button2 = NO,
     OnAccept = function()
         Transmog_deleteOutfit()
     end,

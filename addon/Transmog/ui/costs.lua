@@ -50,6 +50,7 @@ function Transmog:calculateCost(to)
             TransmogFrameApplyButton:SetText("Change any Items")
         end
 
+		TransmogFrameCurrencyText:SetText("")
 		TransmogFrameCurrencyText:Hide()
     else
 		self:aSend("CalculateCost:"..slots)
