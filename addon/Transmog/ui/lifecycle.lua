@@ -140,7 +140,12 @@ function Transmog:Reset(once)
         self:aSend("GetAvailableTransmogs")
     end
 
-    TransmogFrameRaceBackground:SetTexture("Interface\\AddOns\\Transmog\\assets\\transmogbackground" .. self.race)
+    local race = self.race or "human"
+    if race == "scourge" then race = "undead" end
+    TransmogFrameRaceBackground:SetTexture("Interface\\AddOns\\Transmog\\assets\\transmogbackground" .. race)
+    if not TransmogFrameRaceBackground:GetTexture() then
+        TransmogFrameRaceBackground:SetTexture("Interface\\AddOns\\Transmog\\assets\\transmogbackgroundhuman")
+    end
     TransmogFrameSplash:Show()
     TransmogFrameInstructions:Show()
     TransmogFrameApplyButton:Disable()
