@@ -597,15 +597,6 @@ function Transmog:InitSetsView()
         icon:SetHeight(26)
         pBtn.icon = icon
 
-        -- Icon Border
-        local iborder = pBtn:CreateTexture(nil, "OVERLAY")
-        iborder:SetPoint("CENTER", icon, "CENTER", 0, 0)
-        iborder:SetWidth(30)
-        iborder:SetHeight(30)
-        iborder:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
-        iborder:SetBlendMode("ADD")
-        pBtn.iborder = iborder
-
         -- Status Icon (Green Tick or Red Cross)
         local statusIcon = pBtn:CreateTexture(nil, "ARTWORK")
         statusIcon:SetPoint("RIGHT", pBtn, "RIGHT", -6, 0)
@@ -855,9 +846,6 @@ function Transmog:SelectSet(set)
                 pBtn.nameText:SetText((colorCode or "|cffffffff") .. itemName .. "|r")
 
                 pBtn.icon:SetTexture(tex or "Interface\\Icons\\INV_Misc_QuestionMark")
-
-                local r, g, b = GetItemQualityColor(quality)
-                pBtn.iborder:SetVertexColor(r or 1, g or 1, b or 1, 0.7)
 
                 local isCollected = self:IsItemCollected(piece.id)
                 pBtn.isCollected = isCollected
