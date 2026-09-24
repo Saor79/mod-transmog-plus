@@ -383,8 +383,8 @@ function Transmog:InitSetsView()
 
     -- Main sets container (constrained strictly inside TransmogFrame content area)
     local frame = CreateFrame("Frame", "TransmogSetsFrame", TransmogFrame)
-    frame:SetPoint("TOPLEFT", TransmogFrame, "TOPLEFT", 252, -80)
-    frame:SetWidth(452)
+    frame:SetPoint("TOPLEFT", TransmogFrame, "TOPLEFT", 257, -80)
+    frame:SetWidth(456)
     frame:SetHeight(388)
     frame:SetFrameStrata("MEDIUM")
     frame:SetFrameLevel(TransmogFrame:GetFrameLevel() + 2)
@@ -392,15 +392,15 @@ function Transmog:InitSetsView()
 
     -- Class filter dropdown
     local classDD = CreateFrame("Frame", "TransmogSetClassDropDown", frame, "UIDropDownMenuTemplate")
-    classDD:SetPoint("TOPLEFT", frame, "TOPLEFT", -12, 4)
-    UIDropDownMenu_SetWidth(classDD, 115)
+    classDD:SetPoint("TOPLEFT", frame, "TOPLEFT", -15, -5)
+    UIDropDownMenu_SetWidth(classDD, 120)
     UIDropDownMenu_Initialize(classDD, SetClassDropDown_Initialize)
     UIDropDownMenu_SetText(classDD, "My Class (" .. (UnitClass("player") or "") .. ")")
 
     -- Category filter dropdown
     local catDD = CreateFrame("Frame", "TransmogSetCategoryDropDown", frame, "UIDropDownMenuTemplate")
-    catDD:SetPoint("LEFT", classDD, "RIGHT", -22, 0)
-    UIDropDownMenu_SetWidth(catDD, 135)
+    catDD:SetPoint("LEFT", classDD, "RIGHT", -20, 0)
+    UIDropDownMenu_SetWidth(catDD, 140)
     UIDropDownMenu_Initialize(catDD, SetCategoryDropDown_Initialize)
     UIDropDownMenu_SetText(catDD, "All Categories")
 
@@ -410,9 +410,9 @@ function Transmog:InitSetsView()
 
     -- Left Column: Set List container
     local listContainer = CreateFrame("Frame", "TransmogSetListContainer", frame)
-    listContainer:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -32)
-    listContainer:SetWidth(198)
-    listContainer:SetHeight(350)
+    listContainer:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -35)
+    listContainer:SetWidth(200)
+    listContainer:SetHeight(348)
     listContainer:SetFrameLevel(frame:GetFrameLevel() + 1)
     listContainer:SetBackdrop({
         bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -451,7 +451,7 @@ function Transmog:InitSetsView()
     self.setButtons = {}
     for i = 1, MAX_VISIBLE_SETS do
         local btn = CreateFrame("Button", "TransmogSetListButton" .. i, listContainer)
-        btn:SetWidth(172)
+        btn:SetWidth(174)
         btn:SetHeight(SET_BUTTON_HEIGHT)
         btn:SetPoint("TOPLEFT", listContainer, "TOPLEFT", 3, -4 - (i - 1) * SET_BUTTON_HEIGHT)
         btn:SetFrameLevel(scrollFrame:GetFrameLevel() + 2)
@@ -528,11 +528,11 @@ function Transmog:InitSetsView()
     self.emptyText = emptyText
     _G["TransmogSetEmptyText"] = emptyText
 
-    -- Right Column: Selected Set Details (250px wide, ending at x = 704 cleanly inside inner border)
+    -- Right Column: Selected Set Details (250px wide, ending at x = 713 cleanly inside inner border)
     local detail = CreateFrame("Frame", "TransmogSetDetailFrame", frame)
-    detail:SetPoint("TOPLEFT", frame, "TOPLEFT", 202, -32)
+    detail:SetPoint("TOPLEFT", frame, "TOPLEFT", 206, -35)
     detail:SetWidth(250)
-    detail:SetHeight(350)
+    detail:SetHeight(348)
     detail:SetFrameLevel(frame:GetFrameLevel() + 1)
     detail:SetBackdrop({
         bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
