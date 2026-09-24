@@ -120,6 +120,7 @@ Transmog:SetScript("OnEvent", function()
 									Transmog:cacheItem(itemID)
 
 									table.insert(Transmog.transmogDataFromServer[slot][itemClass], itemID)
+									Transmog.collectedItems[itemID] = true
 								end
 							end
 						end
@@ -172,7 +173,12 @@ Transmog:SetScript("OnEvent", function()
 					end
 					if dataEx[2] and TransmogFrame_ToNumber(dataEx[2]) then
 						twfdebug("new transmog " .. dataEx[2])
-						Transmog:addWonItem(TransmogFrame_ToNumber(dataEx[2]))
+						local newID = TransmogFrame_ToNumber(dataEx[2])
+						Transmog:addWonItem(newID)
+						Transmog.collectedItems[newID] = true
+						if Transmog.tab == 'sets' and Transmog.UpdateSetList then
+							Transmog:UpdateSetList()
+						end
 					else
 						twfdebug("new transmog not number :[" .. dataEx[2] .. "]")
 					end

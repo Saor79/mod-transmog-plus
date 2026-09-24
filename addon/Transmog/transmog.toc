@@ -12,10 +12,12 @@ features\collection_tooltips.lua
 features\addon_protocol.lua
 features\apply_transmog.lua
 features\outfits.lua
+features\set_data.lua
 features\slash_commands.lua
 ui\lifecycle.lua
 ui\appearance_list.lua
 ui\slots_model.lua
+ui\sets_view.lua
 ui\costs.lua
 ui\tooltips.lua
 ui\animations.lua

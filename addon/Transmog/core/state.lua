@@ -19,3 +19,10 @@ Transmog.currentOutfit = nil
 Transmog.equippedTransmogs = {}
 
 Transmog.localCache = {}
+
+-- Sets tab state
+Transmog.collectedItems = {}
+Transmog.selectedSet = nil
+Transmog.selectedSetCategory = "ALL"
+Transmog.selectedSetClass = nil
+Transmog.filteredSets = {}

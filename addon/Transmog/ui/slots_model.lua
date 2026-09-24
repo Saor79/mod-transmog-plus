@@ -201,7 +201,24 @@ end
 -- Selects a gear slot and displays available transmog options for it.
 function selectTransmogSlot(InventorySlotId, slotName)
 
-	twfdebug("selectTransmogSlot slot: " .. InventorySlotId)
+    if Transmog.tab == 'sets' and InventorySlotId ~= -1 then
+        Transmog.tab = 'items'
+        TransmogFrameItemsButton:SetNormalTexture('Interface\\AddOns\\Transmog\\assets\\tab_active')
+        TransmogFrameItemsButton:SetPushedTexture('Interface\\AddOns\\Transmog\\assets\\tab_active')
+        TransmogFrameItemsButtonText:SetText(HIGHLIGHT_FONT_COLOR_CODE .. 'Items')
+
+        if TransmogFrameSetsButton then
+            TransmogFrameSetsButton:SetNormalTexture('Interface\\AddOns\\Transmog\\assets\\tab_inactive')
+            TransmogFrameSetsButton:SetPushedTexture('Interface\\AddOns\\Transmog\\assets\\tab_active')
+            TransmogFrameSetsButtonText:SetText(NORMAL_FONT_COLOR_CODE .. 'Sets')
+        end
+
+        if TransmogSetsFrame then
+            TransmogSetsFrame:Hide()
+        end
+
+        TransmogFrameCollected:Show()
+    end
 
     TransmogFrameNoTransmogs:Hide()
 
@@ -299,10 +316,45 @@ function Transmog_switchTab(to)
         TransmogFrameItemsButton:SetPushedTexture('Interface\\AddOns\\Transmog\\assets\\tab_active')
         TransmogFrameItemsButtonText:SetText(HIGHLIGHT_FONT_COLOR_CODE .. 'Items')
 
+        if TransmogFrameSetsButton then
+            TransmogFrameSetsButton:SetNormalTexture('Interface\\AddOns\\Transmog\\assets\\tab_inactive')
+            TransmogFrameSetsButton:SetPushedTexture('Interface\\AddOns\\Transmog\\assets\\tab_active')
+            TransmogFrameSetsButtonText:SetText(NORMAL_FONT_COLOR_CODE .. 'Sets')
+        end
+
+        if TransmogSetsFrame then
+            TransmogSetsFrame:Hide()
+        end
+
+        TransmogFrameCollected:Show()
+
         if Transmog.currentTransmogSlot ~= nil then
             selectTransmogSlot(Transmog.currentTransmogSlot, Transmog.currentTransmogSlotName)
         else
             selectTransmogSlot(-1)
+        end
+    elseif to == 'sets' then
+        TransmogFrameItemsButton:SetNormalTexture('Interface\\AddOns\\Transmog\\assets\\tab_inactive')
+        TransmogFrameItemsButton:SetPushedTexture('Interface\\AddOns\\Transmog\\assets\\tab_active')
+        TransmogFrameItemsButtonText:SetText(NORMAL_FONT_COLOR_CODE .. 'Items')
+
+        if TransmogFrameSetsButton then
+            TransmogFrameSetsButton:SetNormalTexture('Interface\\AddOns\\Transmog\\assets\\tab_active')
+            TransmogFrameSetsButton:SetPushedTexture('Interface\\AddOns\\Transmog\\assets\\tab_active')
+            TransmogFrameSetsButtonText:SetText(HIGHLIGHT_FONT_COLOR_CODE .. 'Sets')
+        end
+
+        -- Hide Items grid and pagination
+        Transmog:hideItems(true)
+        Transmog:hidePagination()
+        TransmogFrameCollected:Hide()
+        TransmogFrameNoTransmogs:Hide()
+        TransmogFrameSplash:Hide()
+        TransmogFrameInstructions:Hide()
+
+        -- Show Sets UI
+        if Transmog.ShowSetsView then
+            Transmog:ShowSetsView()
         end
     end
 end

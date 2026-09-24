@@ -804,6 +804,47 @@
                     </OnClick>
                 </Scripts>
             </Button>
+            <Button name="$parentSetsButton" inherits="UIPanelButtonTemplate" text="">
+                <NormalTexture name="$parentNormalTexture" file="Interface\AddOns\Transmog\assets\tab_inactive">
+                    <Size>
+                        <AbsDimension x="128" y="32"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPLEFT">
+                            <Offset>
+                                <AbsDimension x="0" y="0"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </NormalTexture>
+                <PushedTexture name="$parentPushedTexture" file="Interface\AddOns\Transmog\assets\tab_active">
+                    <Size>
+                        <AbsDimension x="128" y="32"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPLEFT">
+                            <Offset>
+                                <AbsDimension x="0" y="0"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </PushedTexture>
+                <Size>
+                    <AbsDimension x="81" y="32"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="334" y="-47"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        Transmog_switchTab('sets')
+                    </OnClick>
+                </Scripts>
+            </Button>
             <StatusBar name="$parentCollected" inherits="TransmogCollectedStatusBarTemplate" minValue="0" maxValue="1"
                        defaultValue="1" id="1">
                 <Anchors>
